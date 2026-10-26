@@ -12,6 +12,7 @@ import Maps from './screens/Maps'
 import Loot from './screens/Loot'
 import Tables from './screens/Tables'
 import Settings from './screens/Settings'
+import { UpdateBar } from './update'
 
 export type TabId = 'forge' | 'story' | 'ideas' | 'concepts' | 'maps' | 'loot' | 'tables' | 'settings'
 const TABS: { id: TabId; label: string; icon: string }[] = [
@@ -54,6 +55,7 @@ export default function App() {
         </nav>
       )}
       <div className="main">
+        <UpdateBar />
         <TopBar onSettings={() => go('settings')} />
         <div className="content">{screen}</div>
         {!wide && (

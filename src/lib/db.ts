@@ -1,4 +1,5 @@
 import Dexie, { type Table } from 'dexie'
+import { entriesFor } from './tablemath'
 import type { Campaign, Idea, MapEdge, MapFeature, MapNode, PartyItem, Player, PlotBeat, RollTable, TableEntry, TileMap } from './types'
 
 /**
@@ -96,7 +97,13 @@ export async function remove<T extends Row & { campaignId?: number | null }>(tab
   touched()
 }
 
-export async function ensureCampaign(): Promise<number> {
+let ensuring: Promise<number> | null = null
+export function ensureCampaign(): Promise<number> {
+  ensuring ??= createFirstCampaign().finally(() => { ensuring = null })
+  return ensuring
+}
+
+async function createFirstCampaign(): Promise<number> {
   const first = await db.campaigns.orderBy('createdAt').first()
   if (first?.id) return first.id
   const id = await db.campaigns.add({
@@ -110,7 +117,6 @@ export async function ensureCampaign(): Promise<number> {
 async function seedTables() {
   const mk = async (name: string, dieSides: number, description: string, texts: string[]) => {
     const id = await db.rollTables.add({ name, dieSides, description, campaignId: null, createdAt: now(), uid: newUid(), updatedAt: now() })
-    const { entriesFor } = await import('./tablemath')
     await db.entries.bulkAdd(entriesFor(id, dieSides, texts))
   }
   await mk('Tavern Rumors', 6, 'Gossip overheard over a pint', [

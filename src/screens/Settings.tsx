@@ -132,9 +132,6 @@ function AiCard() {
           </label>
           <Field label="Model" value={d.claudeModel} onChange={(claudeModel) => setD({ ...d, claudeModel })} placeholder={DEFAULT_MODEL} />
           <div className="muted tiny">Get a key at console.anthropic.com → API Keys. It's stored only on this device and sent only to Anthropic. Each device needs the key entered once (it isn't synced).</div>
-          <label className="field"><span>Creativity: {d.creativity.toFixed(1)}</span>
-            <input type="range" min={0.2} max={1} step={0.1} value={d.creativity} onChange={(e) => setD({ ...d, creativity: Number(e.target.value) })} />
-          </label>
         </>
       )}
       <div className="row">

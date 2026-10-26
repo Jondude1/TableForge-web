@@ -20,7 +20,6 @@ export async function complete(s: AiSettings, system: string, user: string, maxT
       body: JSON.stringify({
         model: s.claudeModel || DEFAULT_MODEL,
         max_tokens: maxTokens,
-        temperature: Math.min(1, Math.max(0, s.creativity)),
         system,
         messages: [{ role: 'user', content: user }],
       }),

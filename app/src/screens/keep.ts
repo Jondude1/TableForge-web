@@ -10,3 +10,6 @@ export function useKept<T>(key: string, init: T): [T, (v: T) => void] {
   const set = useCallback((nv: T) => { memory.set(key, nv); setV(nv) }, [key])
   return [v, set]
 }
+
+/** Sets kept state from another screen (e.g. Ideas sending an idea to the Forge). */
+export function setKept<T>(key: string, value: T) { memory.set(key, value) }

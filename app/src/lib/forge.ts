@@ -38,7 +38,7 @@ export function describe(ctx: Ctx): string {
 
 const SYSTEM = `You are a creative assistant for a Dungeons & Dragons 5e Dungeon Master preparing sessions.
 Give vivid, specific, table-ready ideas a DM can use immediately. Avoid generic fantasy clichés unless asked.
-Keep each idea consistent with the campaign details provided. Never reuse names already established.
+Keep each idea consistent with the campaign details provided. Don't reuse names already established, unless the DM names a specific character or place, in which case use exactly that name.
 Always reply with JSON only, in exactly this shape: {"items":[{"title":"...","body":"...","tags":"..."}]}
 "body" is plain text using short labeled lines separated by \\n. "tags" is 1-4 comma-separated keywords.`
 
@@ -76,6 +76,38 @@ export async function generate(s: AiSettings, ctx: Ctx, type: IdeaType, count: n
     avoid.length ? `Do not repeat or closely resemble these: ${avoid.join('; ')}` : '',
   ].filter(Boolean).join('\n')
   return toCards(await complete(s, SYSTEM, user))
+}
+
+const FLESH_SYSTEM = `You help a Dungeons & Dragons 5e Dungeon Master flesh out an idea they have already started.
+The DM's details are canon: keep every name exactly as written (spelling included), keep every fact they gave, and never contradict them.
+Fill in everything they left open so the result is vivid, specific and table-ready, and consistent with the campaign.
+Weave the DM's details into the labeled lines where they belong rather than repeating them in a list.
+When asked for several versions, keep the DM's details identical in each and vary only what they left open.
+Always reply with JSON only, in exactly this shape: {"items":[{"title":"...","body":"...","tags":"..."}]}
+"body" is plain text using short labeled lines separated by \\n. "tags" is 1-4 comma-separated keywords.`
+
+/** Expands an idea the DM already has (a name, a few facts) without changing what they gave. */
+export async function fleshOut(s: AiSettings, ctx: Ctx, type: IdeaType, name: string, notes: string, versions: number, avoid: string[] = []): Promise<Card[]> {
+  if (!aiReady(s)) return offlineFleshOut(type, name, notes, versions)
+  const user = [
+    describe(ctx), '',
+    `Flesh out this ${IDEA_TYPES[type].singular}${versions > 1 ? `, as ${versions} different versions` : ''}.`,
+    name.trim() ? `Name (use exactly as the title): ${name.trim()}` : 'Name: not decided — invent a fitting one.',
+    notes.trim() ? `What the DM already knows:\n${notes.trim()}` : 'The DM has no other details yet.',
+    SHAPE[type],
+    avoid.length ? `Make it clearly different from these earlier versions: ${avoid.join('; ')}` : '',
+  ].filter(Boolean).join('\n')
+  const cards = await toCards(await complete(s, FLESH_SYSTEM, user)).slice(0, versions)
+  // The DM's name is canon even if the model drifts.
+  return name.trim() ? cards.map((c) => ({ ...c, title: name.trim() })) : cards
+}
+
+function offlineFleshOut(type: IdeaType, name: string, notes: string, versions: number): Card[] {
+  return offlineCards(type, versions).map((c) => mkCard(
+    name.trim() || c.title,
+    [...notes.trim().split('\n').filter(Boolean).map((l) => (l.includes(':') ? l.trim() : `Notes: ${l.trim()}`)), c.body].join('\n'),
+    c.tags,
+  ))
 }
 
 export async function nextBeats(s: AiSettings, ctx: Ctx, steer: string): Promise<Card[]> {

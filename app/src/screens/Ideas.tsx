@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, remove, save, type IdeaRow } from '../lib/db'
-import { ALL_TYPES, IDEA_TYPES, asType, type IdeaType } from '../lib/types'
+import { ALL_TYPES, GENERATABLE, IDEA_TYPES, asType, type IdeaType } from '../lib/types'
 import { useApp } from '../store'
 import { Confirm, Empty, Field, FormModal, Header, Icon, Label, PillO, Select, TypeTag, typeOptions } from '../ui'
 import type { TabId } from '../App'
+import { setKept } from './keep'
 
 type Filter = 'ALL' | 'OWN' | 'FAV' | 'UNUSED' | IdeaType
 
@@ -91,6 +92,13 @@ export default function Ideas({ go }: { go: (t: TabId) => void }) {
         onSave={async (i) => { await save(db.ideas, i); setEditing(null) }}
         onDelete={editing.id ? () => { setDeleting(editing); setEditing(null) } : undefined}
         actions={editing.id ? [
+          ...(GENERATABLE.includes(asType(editing.type)) ? [{ l: 'Flesh out in Forge', i: 'forge', f: () => {
+            setKept('forge.mode', 'own')
+            setKept('forge.type', asType(editing.type))
+            setKept('forge.own', { name: editing.title, notes: editing.body, versions: 1, ideaId: editing.id! })
+            setKept(`forge.${campaignId}.${asType(editing.type)}.own`, { cards: [], kept: [], saved: [] })
+            go('forge')
+          } }] : []),
           { l: 'Outline', i: 'story', f: () => toOutline(editing) },
           { l: 'Concepts', i: 'concepts', f: () => toMap(editing) },
           ...(editing.type === 'MAGIC_ITEM' ? [{ l: 'Loot', i: 'loot', f: () => toLoot(editing) }] : []),

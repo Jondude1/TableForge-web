@@ -10,23 +10,25 @@ import Ideas from './screens/Ideas'
 import Concepts from './screens/Concepts'
 import Maps from './screens/Maps'
 import Loot from './screens/Loot'
+import Monsters from './screens/Monsters'
 import Tables from './screens/Tables'
 import Settings from './screens/Settings'
 import { UpdateBar } from './update'
 
-export type TabId = 'forge' | 'story' | 'ideas' | 'concepts' | 'maps' | 'loot' | 'tables' | 'settings'
+export type TabId = 'forge' | 'story' | 'ideas' | 'concepts' | 'maps' | 'monsters' | 'loot' | 'tables' | 'settings'
 const TABS: { id: TabId; label: string; icon: string }[] = [
   { id: 'forge', label: 'Forge', icon: 'forge' },
   { id: 'story', label: 'Story', icon: 'story' },
   { id: 'ideas', label: 'Ideas', icon: 'ideas' },
   { id: 'concepts', label: 'Concepts', icon: 'concepts' },
   { id: 'maps', label: 'Maps', icon: 'maps' },
+  { id: 'monsters', label: 'Monsters', icon: 'monster' },
   { id: 'loot', label: 'Loot', icon: 'loot' },
   { id: 'tables', label: 'Tables', icon: 'tables' },
   { id: 'settings', label: 'Settings', icon: 'settings' },
 ]
 // Phone bottom bar: the four most used at the table, plus More.
-const PHONE: TabId[] = ['forge', 'story', 'maps', 'loot']
+const PHONE: TabId[] = ['forge', 'story', 'maps', 'monsters']
 
 export default function App() {
   const wide = useWide()
@@ -35,7 +37,7 @@ export default function App() {
   const go = (t: TabId) => { setTab(t); setMore(false); try { localStorage.setItem('tf.tab', t) } catch { /* ignore */ } }
 
   const screen = {
-    forge: <Forge />, story: <Story />, ideas: <Ideas go={go} />, concepts: <Concepts />, maps: <Maps />,
+    forge: <Forge />, story: <Story />, ideas: <Ideas go={go} />, concepts: <Concepts />, maps: <Maps />, monsters: <Monsters />,
     loot: <Loot />, tables: <Tables />, settings: <Settings />,
   }[tab]
 

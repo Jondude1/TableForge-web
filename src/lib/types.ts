@@ -89,3 +89,51 @@ export function terrainFromKey(k: string): Terrain | undefined {
   if (s.includes('ice')) return by('snow')
   return undefined
 }
+
+// ---------- Monsters ----------
+
+export interface NamedText { name: string; text: string }
+
+/** A 5e-style stat block. Text fields are kept as written so nothing is lost when scanning. */
+export interface StatBlock {
+  name: string
+  meta: string            // "Large dragon, chaotic evil"
+  ac: string              // "17 (natural armor)"
+  hp: string              // "178 (17d12 + 68)"
+  speed: string
+  str: number; dex: number; con: number; int: number; wis: number; cha: number
+  saves: string
+  skills: string
+  vulnerabilities: string
+  resistances: string
+  immunities: string
+  conditionImmunities: string
+  senses: string
+  languages: string
+  cr: string              // "13 (10,000 XP)"
+  traits: NamedText[]
+  actions: NamedText[]
+  bonusActions: NamedText[]
+  reactions: NamedText[]
+  legendaryIntro: string
+  legendary: NamedText[]
+  notes: string
+}
+
+export interface Monster {
+  id?: number; campaignId: number; name: string; cr: string; data: StatBlock
+  hpNow: number | null; createdAt: number
+}
+
+export const blankStatBlock = (name = ''): StatBlock => ({
+  name, meta: '', ac: '', hp: '', speed: '30 ft.', str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10,
+  saves: '', skills: '', vulnerabilities: '', resistances: '', immunities: '', conditionImmunities: '',
+  senses: '', languages: '', cr: '', traits: [], actions: [], bonusActions: [], reactions: [], legendaryIntro: '', legendary: [], notes: '',
+})
+
+export const ABILITIES = ['str', 'dex', 'con', 'int', 'wis', 'cha'] as const
+export const mod = (score: number) => Math.floor((score - 10) / 2)
+export const fmtMod = (n: number) => (n >= 0 ? `+${n}` : `${n}`)
+
+/** Max hit points from "178 (17d12 + 68)" -> 178. */
+export const maxHp = (hp: string) => { const m = /^\s*(\d+)/.exec(hp); return m ? Number(m[1]) : null }

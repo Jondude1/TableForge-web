@@ -1,6 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import { entriesFor } from './tablemath'
-import type { Campaign, Idea, MapEdge, MapFeature, MapNode, PartyItem, Player, PlotBeat, RollTable, TableEntry, TileMap } from './types'
+import type { Monster, Campaign, Idea, MapEdge, MapFeature, MapNode, PartyItem, Player, PlotBeat, RollTable, TableEntry, TileMap } from './types'
 
 /**
  * Every synced record carries a permanent `uid` and an `updatedAt` time. Deletes leave a
@@ -19,6 +19,7 @@ export type NodeRow = MapNode & Synced
 export type EdgeRow = MapEdge & Synced
 export type TileMapRow = TileMap & Synced
 export type FeatureRow = MapFeature & Synced
+export type MonsterRow = Monster & Synced
 
 class TFDB extends Dexie {
   campaigns!: Table<CampaignRow, number>
@@ -33,6 +34,7 @@ class TFDB extends Dexie {
   tileMaps!: Table<TileMapRow, number>
   features!: Table<FeatureRow, number>
   tombstones!: Table<Tombstone, string>
+  monsters!: Table<MonsterRow, number>
 
   constructor() {
     super('tableforge')
@@ -50,6 +52,7 @@ class TFDB extends Dexie {
       features: '++id, &uid, mapId',
       tombstones: '&uid, campaignUid',
     })
+    this.version(2).stores({ monsters: '++id, &uid, campaignId, name' })
   }
 }
 
@@ -136,7 +139,7 @@ async function seedTables() {
 /** Deletes a campaign and everything that belongs to it. */
 export async function deleteCampaignCascade(c: CampaignRow) {
   const id = c.id!
-  await db.transaction('rw', [db.campaigns, db.ideas, db.beats, db.players, db.items, db.rollTables, db.entries, db.nodes, db.edges, db.tileMaps, db.features, db.tombstones], async () => {
+  await db.transaction('rw', [db.campaigns, db.ideas, db.beats, db.players, db.items, db.rollTables, db.entries, db.nodes, db.edges, db.tileMaps, db.features, db.tombstones, db.monsters], async () => {
     const maps = await db.tileMaps.where('campaignId').equals(id).toArray()
     for (const m of maps) await db.features.where('mapId').equals(m.id!).delete()
     const tables = await db.rollTables.where('campaignId').equals(id).toArray()
@@ -147,6 +150,7 @@ export async function deleteCampaignCascade(c: CampaignRow) {
       db.rollTables.where('campaignId').equals(id).delete(), db.nodes.where('campaignId').equals(id).delete(),
       db.edges.where('campaignId').equals(id).delete(), db.tileMaps.where('campaignId').equals(id).delete(),
       db.tombstones.where('campaignUid').equals(c.uid).delete(),
+      db.monsters.where('campaignId').equals(id).delete(),
     ])
     await db.campaigns.delete(id)
   })

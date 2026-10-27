@@ -4,7 +4,10 @@ import { DEFAULT_MODEL } from './settings'
 export class AiError extends Error {}
 
 /** Calls Claude directly from the browser with the user's own key. */
-export async function complete(s: AiSettings, system: string, user: string, maxTokens = 3000): Promise<string> {
+/** An image to send alongside the prompt (base64 without the data: prefix). */
+export interface ImagePart { mediaType: 'image/jpeg' | 'image/png' | 'image/webp'; data: string }
+
+export async function complete(s: AiSettings, system: string, user: string, maxTokens = 3000, images: ImagePart[] = []): Promise<string> {
   if (s.provider !== 'CLAUDE') throw new AiError('Offline mode has no AI model. Add a Claude API key in Settings.')
   if (!s.claudeKey) throw new AiError('Add your Claude API key in Settings.')
   let res: Response
@@ -21,7 +24,12 @@ export async function complete(s: AiSettings, system: string, user: string, maxT
         model: s.claudeModel || DEFAULT_MODEL,
         max_tokens: maxTokens,
         system,
-        messages: [{ role: 'user', content: user }],
+        messages: [{
+          role: 'user',
+          content: images.length
+            ? [...images.map((im) => ({ type: 'image', source: { type: 'base64', media_type: im.mediaType, data: im.data } })), { type: 'text', text: user }]
+            : user,
+        }],
       }),
     })
   } catch {

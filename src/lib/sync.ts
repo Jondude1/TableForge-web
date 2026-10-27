@@ -80,7 +80,7 @@ async function open(aes: CryptoKey, content: string): Promise<unknown> {
 // ---------- Wire format ----------
 
 /** Record kinds, in the order they must be applied so references resolve. */
-export const KINDS = ['campaign', 'idea', 'player', 'table', 'map', 'beat', 'item', 'node', 'edge', 'feature'] as const
+export const KINDS = ['campaign', 'idea', 'player', 'table', 'map', 'beat', 'item', 'node', 'edge', 'feature', 'monster'] as const
 export type Kind = (typeof KINDS)[number]
 
 export interface Wire { k: Kind | 'del'; u: number; c: string; d?: boolean; r?: Record<string, unknown> }
@@ -127,6 +127,8 @@ async function collect(c: CampaignRow): Promise<{ uid: string; updatedAt: number
     const feats = await db.features.where('mapId').equals(m.id!).toArray()
     feats.forEach((f) => push('feature', f, { ...strip(f, 'mapId'), mapUid: m.uid }))
   }
+  const monsters = await db.monsters.where('campaignId').equals(cid).toArray()
+  monsters.forEach((m) => push('monster', m, strip(m)))
   const stones = await db.tombstones.where('campaignUid').equals(c.uid).toArray()
   stones.forEach((s) => out.push({ uid: s.uid, updatedAt: s.deletedAt, wire: { k: 'del', u: s.deletedAt, c: c.uid, d: true } }))
   return out
@@ -135,7 +137,7 @@ async function collect(c: CampaignRow): Promise<{ uid: string; updatedAt: number
 // ---------- Applying incoming records ----------
 
 const tableFor = (k: Kind) =>
-  ({ campaign: db.campaigns, idea: db.ideas, beat: db.beats, player: db.players, item: db.items, table: db.rollTables, node: db.nodes, edge: db.edges, map: db.tileMaps, feature: db.features })[k]
+  ({ campaign: db.campaigns, idea: db.ideas, beat: db.beats, player: db.players, item: db.items, table: db.rollTables, node: db.nodes, edge: db.edges, map: db.tileMaps, feature: db.features, monster: db.monsters })[k]
 
 async function findByUid(uid: string): Promise<{ kind: Kind; row: Synced & { id?: number } } | null> {
   for (const k of KINDS) {
@@ -162,7 +164,7 @@ export async function applyWire(uid: string, w: Wire, code: string): Promise<App
     if (stone && stone.deletedAt >= w.u) return 'skipped'
     const found = await findByUid(uid)
     if (found && found.row.updatedAt > w.u) return 'skipped' // edited after the delete; keep
-    await db.transaction('rw', [db.tombstones, db.campaigns, db.ideas, db.beats, db.players, db.items, db.rollTables, db.entries, db.nodes, db.edges, db.tileMaps, db.features], async () => {
+    await db.transaction('rw', [db.tombstones, db.campaigns, db.ideas, db.beats, db.players, db.items, db.rollTables, db.entries, db.nodes, db.edges, db.tileMaps, db.features, db.monsters], async () => {
       await db.tombstones.put({ uid, campaignUid: w.c, deletedAt: w.u })
       if (found && found.kind !== 'campaign') {
         const id = found.row.id!
@@ -198,7 +200,7 @@ export async function applyWire(uid: string, w: Wire, code: string): Promise<App
   if (campaignId == null) return 'pending'
 
   switch (k) {
-    case 'idea': case 'beat': case 'player':
+    case 'idea': case 'beat': case 'player': case 'monster':
       await table.put({ ...base, campaignId }); break
     case 'item': {
       const holderId = r.holderUid ? await localId('player', r.holderUid) : null

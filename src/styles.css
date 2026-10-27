@@ -246,3 +246,20 @@ input[type=range] { width: 100%; accent-color: var(--gold); }
 
 .update-bar { display: flex; align-items: center; gap: 8px; padding: calc(8px + var(--safe-t)) 12px 8px 16px; background: var(--gold-dim); color: #FFE3A6; font-family: var(--ui); font-size: 14.5px; font-weight: 600; }
 .update-bar + .topbar { padding-top: 8px; }
+
+/* ---------- Stat block: the classic 5e layout (parchment, red rules and headings) ---------- */
+.statblock { background: #F7ECD5; color: #1F140C; border-radius: 6px; padding: 16px 18px 18px; font-family: var(--body); font-size: 16.5px; line-height: 1.38;
+  border-top: 5px solid #E69A28; border-bottom: 5px solid #E69A28; box-shadow: 0 8px 24px rgba(0,0,0,.45), inset 0 0 40px rgba(160,110,40,.12); }
+.statblock .sb-name { font-family: var(--display); font-weight: 700; font-size: 25px; color: #7A200D; margin: 0; letter-spacing: .02em; line-height: 1.15; }
+.statblock .sb-meta { font-style: italic; font-size: 15.5px; margin-bottom: 2px; }
+.statblock .sb-rule { height: 5px; margin: 8px 0; background: #9C2B1B; clip-path: polygon(0 0, 100% 50%, 0 100%); }
+.statblock .sb-line { color: #1F140C; } .statblock .sb-line b { margin-right: 3px; color: #7A200D; }
+.statblock .sb-abilities { display: grid; grid-template-columns: repeat(6, 1fr); text-align: center; gap: 2px; color: #7A200D; }
+.statblock .sb-ab { background: none; border: 0; padding: 4px 0; border-radius: 6px; color: #1F140C; font: inherit; font-size: 15px; }
+.statblock .sb-ab:not(:disabled):active { background: rgba(156,43,27,.12); }
+.statblock .sb-abn { font-weight: 700; color: #7A200D; }
+.statblock .sb-h { font-family: var(--display); font-weight: 600; font-size: 19px; color: #7A200D; margin: 14px 0 6px; padding-bottom: 2px; border-bottom: 1.5px solid #9C2B1B; }
+.statblock .sb-p { margin: 0 0 8px; }
+.statblock .sb-roll { display: inline; background: rgba(230,154,40,.28); border: 0; border-bottom: 1.5px solid #B8741A; border-radius: 4px; padding: 0 3px; color: #5A1A0A; font: inherit; font-weight: 600; cursor: pointer; }
+.statblock .sb-roll:active { background: rgba(230,154,40,.5); }
+@media (max-width: 420px) { .statblock { padding: 14px 13px 16px; font-size: 16px; } .statblock .sb-ab { font-size: 13.5px; } }

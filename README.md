@@ -41,6 +41,6 @@ npm run build
 node test/relay.mjs   # local test relay; point the app at it with localStorage tf.relays = ["ws://localhost:7777"]
 ```
 
-Pushing to `main` builds and deploys to GitHub Pages.
+Source lives in `app/`. Pushing to `main` builds the site and publishes it to both the `gh-pages` branch and the root of `main` (the root `index.html`, `assets/` etc. are build output — don't edit them), so GitHub Pages works with either branch selected.
 
 See [CREDITS.md](CREDITS.md) for design inspiration and licenses.

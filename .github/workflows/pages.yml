@@ -3,6 +3,7 @@ name: Build and publish
 on:
   push:
     branches: [ main ]
+    paths-ignore: [ 'index.html', '404.html', '.nojekyll', 'assets/**', 'fonts/**', 'sw.js', 'manifest.webmanifest', 'icon*', 'apple-touch-icon.png' ]
   workflow_dispatch:
 
 permissions:
@@ -25,6 +26,8 @@ jobs:
       - run: npm run build
       # SPA fallback and no Jekyll processing on GitHub Pages.
       - run: cp dist/index.html dist/404.html && touch dist/.nojekyll
+
+      # Published two ways so the site works whether Pages serves gh-pages or main.
       - name: Publish to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
@@ -33,3 +36,14 @@ jobs:
           publish_branch: gh-pages
           force_orphan: true
           commit_message: Publish ${{ github.sha }}
+
+      - name: Publish to the root of main
+        run: |
+          rm -rf assets fonts index.html 404.html sw.js manifest.webmanifest icon*.png icon.svg apple-touch-icon.png
+          cp -r dist/. .
+          git config user.name "github-actions[bot]"
+          git config user.email "41898099+github-actions[bot]@users.noreply.github.com"
+          git add -A index.html 404.html .nojekyll assets fonts sw.js manifest.webmanifest icon-192.png icon-512.png icon.svg apple-touch-icon.png
+          if git diff --cached --quiet; then echo "Site unchanged"; exit 0; fi
+          git commit -m "Publish site for ${GITHUB_SHA::7}"
+          git push

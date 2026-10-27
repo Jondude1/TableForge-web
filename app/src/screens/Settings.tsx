@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db, deleteCampaignCascade } from '../lib/db'
+import { isMine, refreshMyShares, shareKey, stopSharing } from '../lib/sharedkey'
 import { complete, friendly } from '../lib/ai'
 import { DEFAULT_MODEL, saveAi, useAi, type AiSettings } from '../lib/settings'
 import { joinCampaign, linkCampaign, normalizeCode, onSyncState, syncStates, unlinkCampaign } from '../lib/sync'
@@ -101,12 +102,16 @@ function SyncCard() {
 }
 
 function AiCard() {
+  const { campaign, campaignId, toast } = useApp()
   const saved = useAi()
   const [d, setD] = useState<AiSettings>(saved)
   const [show, setShow] = useState(false)
   const [test, setTest] = useState<string | null>(null)
   useEffect(() => { setD(saved) }, [saved])
   const dirty = JSON.stringify(d) !== JSON.stringify(saved)
+  const shareRow = useLiveQuery(() => db.sharedKeys.where('campaignId').equals(campaignId).first(), [campaignId])
+  const sharingHere = !!shareRow && isMine(shareRow)
+  const received = !!saved.sharedFrom
 
   const runTest = async () => {
     setTest('Testing…')
@@ -116,29 +121,63 @@ function AiCard() {
     } catch (e) { setTest('Failed: ' + friendly(e)) }
   }
 
+  const doSave = async () => {
+    // Typing a different key on this device replaces a shared one.
+    const next = d.claudeKey !== saved.claudeKey ? { ...d, sharedFrom: undefined } : d
+    saveAi(next)
+    await refreshMyShares()
+  }
+
   return (
     <Section title="AI generation">
-      <div className="muted small">The Forge, story suggestions, table generation and map building use this. Offline mode uses built-in tables and needs no internet.</div>
-      <Seg value={d.provider} onChange={(provider) => setD({ ...d, provider })} options={[{ value: 'OFFLINE', label: 'Offline' }, { value: 'CLAUDE', label: 'Claude' }]} />
-      {d.provider === 'CLAUDE' && (
+      <div className="muted small">The Forge, story suggestions, table generation, map building and monster scanning use this. Offline mode uses built-in tables and needs no internet.</div>
+      {received ? (
+        <div className="banner ok" style={{ margin: 0 }}>
+          <div className="small">Using the Claude key shared through <b>{saved.sharedFrom}</b>. Nothing to set up on this device.</div>
+          <button className="btn ghost sm" style={{ marginTop: 6, paddingLeft: 0 }} onClick={() => saveAi({ ...saved, provider: 'CLAUDE', claudeKey: '', sharedFrom: undefined })}>Use my own key instead</button>
+        </div>
+      ) : (
         <>
-          <label className="field">
-            <span>Claude API key</span>
-            <div className="row">
-              <input className="input grow" type={show ? 'text' : 'password'} value={d.claudeKey} placeholder="sk-ant-…" autoComplete="off" spellCheck={false}
-                onChange={(e) => setD({ ...d, claudeKey: e.target.value.trim() })} />
-              <button className="icon-btn" onClick={() => setShow(!show)} aria-label={show ? 'Hide key' : 'Show key'}><Icon n="eye" /></button>
+          <Seg value={d.provider} onChange={(provider) => setD({ ...d, provider })} options={[{ value: 'OFFLINE', label: 'Offline' }, { value: 'CLAUDE', label: 'Claude' }]} />
+          {d.provider === 'CLAUDE' && (
+            <>
+              <label className="field">
+                <span>Claude API key</span>
+                <div className="row">
+                  <input className="input grow" type={show ? 'text' : 'password'} value={d.claudeKey} placeholder="sk-ant-…" autoComplete="off" spellCheck={false}
+                    onChange={(e) => setD({ ...d, claudeKey: e.target.value.trim() })} />
+                  <button className="icon-btn" onClick={() => setShow(!show)} aria-label={show ? 'Hide key' : 'Show key'}><Icon n="eye" /></button>
+                </div>
+              </label>
+              <Field label="Model" value={d.claudeModel} onChange={(claudeModel) => setD({ ...d, claudeModel })} placeholder={DEFAULT_MODEL} />
+              <div className="muted tiny">Get a key at console.anthropic.com → API Keys. It's stored on this device and sent only to Anthropic, unless you share it below.</div>
+            </>
+          )}
+          <div className="row">
+            <button className="btn primary" disabled={!dirty} onClick={doSave}>{dirty ? 'Save' : 'Saved'}</button>
+            {d.provider === 'CLAUDE' && <button className="btn outline" disabled={!d.claudeKey} onClick={runTest}>Test connection</button>}
+          </div>
+          {test && <div className={test.startsWith('Failed') ? 'err small' : 'small'} style={test.startsWith('Failed') ? undefined : { color: 'var(--moss)' }}>{test}</div>}
+          {saved.provider === 'CLAUDE' && saved.claudeKey && !dirty && (
+            <div style={{ borderTop: '1px solid var(--seam-soft)', paddingTop: 14 }} className="stack">
+              {campaign.syncCode ? (
+                <>
+                  <label className="check">
+                    <input type="checkbox" checked={sharingHere} onChange={async (e) => {
+                      if (e.target.checked) { await shareKey(campaignId, campaign.name); toast('Key shared with your synced devices') }
+                      else { await stopSharing(campaignId); toast('Stopped sharing your key') }
+                    }} />
+                    Share this key with devices synced to <b style={{ marginLeft: 4 }}>{campaign.name}</b>
+                  </label>
+                  <div className="muted tiny">They can use Claude without their own key; their usage is billed to your Anthropic account. It travels encrypted with your sync code. Turn this off and it's removed from their devices.</div>
+                </>
+              ) : (
+                <div className="muted tiny">To let other devices use this key, turn on sync for this campaign above, then come back here.</div>
+              )}
             </div>
-          </label>
-          <Field label="Model" value={d.claudeModel} onChange={(claudeModel) => setD({ ...d, claudeModel })} placeholder={DEFAULT_MODEL} />
-          <div className="muted tiny">Get a key at console.anthropic.com → API Keys. It's stored only on this device and sent only to Anthropic. Each device needs the key entered once (it isn't synced).</div>
+          )}
         </>
       )}
-      <div className="row">
-        <button className="btn primary" disabled={!dirty} onClick={() => saveAi(d)}>{dirty ? 'Save' : 'Saved'}</button>
-        {d.provider === 'CLAUDE' && <button className="btn outline" disabled={!d.claudeKey} onClick={runTest}>Test connection</button>}
-      </div>
-      {test && <div className={test.startsWith('Failed') ? 'err small' : 'small'} style={test.startsWith('Failed') ? undefined : { color: 'var(--moss)' }}>{test}</div>}
     </Section>
   )
 }

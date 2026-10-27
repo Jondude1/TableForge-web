@@ -3,7 +3,11 @@ import { useSyncExternalStore } from 'react'
 export type Provider = 'OFFLINE' | 'CLAUDE'
 export const DEFAULT_MODEL = 'claude-sonnet-5-5'
 
-export interface AiSettings { provider: Provider; claudeKey: string; claudeModel: string; creativity: number }
+export interface AiSettings {
+  provider: Provider; claudeKey: string; claudeModel: string; creativity: number
+  /** Set when the key was received from another device through sync (not typed here). */
+  sharedFrom?: string
+}
 
 const KEY = 'tf.ai'
 const defaults: AiSettings = { provider: 'OFFLINE', claudeKey: '', claudeModel: DEFAULT_MODEL, creativity: 0.9 }

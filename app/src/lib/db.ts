@@ -20,6 +20,8 @@ export type EdgeRow = MapEdge & Synced
 export type TileMapRow = TileMap & Synced
 export type FeatureRow = MapFeature & Synced
 export type MonsterRow = Monster & Synced
+/** A Claude key shared with every device synced to the campaign. One per campaign. */
+export interface SharedKeyRow extends Synced { id?: number; campaignId: number; claudeKey: string; claudeModel: string; sharedBy: string }
 
 class TFDB extends Dexie {
   campaigns!: Table<CampaignRow, number>
@@ -35,6 +37,7 @@ class TFDB extends Dexie {
   features!: Table<FeatureRow, number>
   tombstones!: Table<Tombstone, string>
   monsters!: Table<MonsterRow, number>
+  sharedKeys!: Table<SharedKeyRow, number>
 
   constructor() {
     super('tableforge')
@@ -53,6 +56,7 @@ class TFDB extends Dexie {
       tombstones: '&uid, campaignUid',
     })
     this.version(2).stores({ monsters: '++id, &uid, campaignId, name' })
+    this.version(3).stores({ sharedKeys: '++id, &uid, campaignId' })
   }
 }
 
@@ -139,7 +143,7 @@ async function seedTables() {
 /** Deletes a campaign and everything that belongs to it. */
 export async function deleteCampaignCascade(c: CampaignRow) {
   const id = c.id!
-  await db.transaction('rw', [db.campaigns, db.ideas, db.beats, db.players, db.items, db.rollTables, db.entries, db.nodes, db.edges, db.tileMaps, db.features, db.tombstones, db.monsters], async () => {
+  await db.transaction('rw', [db.campaigns, db.ideas, db.beats, db.players, db.items, db.rollTables, db.entries, db.nodes, db.edges, db.tileMaps, db.features, db.tombstones, db.monsters, db.sharedKeys], async () => {
     const maps = await db.tileMaps.where('campaignId').equals(id).toArray()
     for (const m of maps) await db.features.where('mapId').equals(m.id!).delete()
     const tables = await db.rollTables.where('campaignId').equals(id).toArray()
@@ -151,6 +155,7 @@ export async function deleteCampaignCascade(c: CampaignRow) {
       db.edges.where('campaignId').equals(id).delete(), db.tileMaps.where('campaignId').equals(id).delete(),
       db.tombstones.where('campaignUid').equals(c.uid).delete(),
       db.monsters.where('campaignId').equals(id).delete(),
+      db.sharedKeys.where('campaignId').equals(id).delete(),
     ])
     await db.campaigns.delete(id)
   })

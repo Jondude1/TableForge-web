@@ -4,6 +4,7 @@ import { db, ensureCampaign, onLocalChange, type CampaignRow } from './lib/db'
 import type { Ctx } from './lib/forge'
 import { loadNum, saveNum } from './lib/settings'
 import { pushAllSoon, resumeAll } from './lib/sync'
+import { applySharedKeys } from './lib/sharedkey'
 
 interface App {
   campaignId: number
@@ -22,6 +23,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [toastMsg, setToast] = useState<string | null>(null)
   const campaigns = useLiveQuery(() => db.campaigns.toArray(), [])
   const campaign = campaigns?.find((c) => c.id === campaignId)
+  const sharedKeys = useLiveQuery(() => db.sharedKeys.toArray(), [])
+
+  // Use a Claude key shared from another synced device (unless one was typed here).
+  useEffect(() => { if (sharedKeys) applySharedKeys(sharedKeys) }, [sharedKeys])
 
   // Make sure there's always a valid current campaign.
   useEffect(() => {
